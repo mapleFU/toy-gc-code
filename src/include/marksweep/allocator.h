@@ -8,13 +8,20 @@
 #include <memory>
 #include <unistd.h>
 
-// an incomplete data type
-struct allocatorHeader;
+struct allocatorHeader {
+    unsigned int size;
+    allocatorHeader* next;
+};
 
 template <typename T>
 class MarkSweepAllocator {
 public:
-    MarkSweepAllocator();
+    // TODO: make clear why this should not be in another file.
+    MarkSweepAllocator() {
+        this->free = &base;
+        this->free->next = &base;
+        this->free->size = 0;
+    }
     T* allocate(size_t num);
     void deallocate(T*);
 private:

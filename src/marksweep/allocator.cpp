@@ -8,6 +8,7 @@
 #include <list>
 #include <memory>
 #include <exception>
+#include <cassert>
 
 // The minimal size to allocate from heap.
 constexpr int MinHeapAlloc = 1024;
@@ -26,25 +27,18 @@ class allocatorHeader;
 //    allocatorHeaderIter(allocatorHeader* cur): beg(cur), current(cur) {}
 //};
 
-struct allocatorHeader {
-    unsigned int size;
-    allocatorHeader* next;
-};
-
-
-
 //std::list<allocatorHeader> free_list;
 
 template <typename T>
 static allocatorHeader* more_heap(allocatorHeader* free_list, allocatorHeader* using_mem, size_t num_units) {
     if (num_units < MinHeapAlloc) num_units = MinHeapAlloc;
-    char* heap_mem = sbrk();
+    char* heap_mem = sbrk(num_units);
     if (heap_mem == nullptr) {
         throw std::bad_alloc();
     }
 
     auto header = reinterpret_cast<allocatorHeader*>(heap_mem);
-    header.size = num_units;
+    header->size = num_units;
 
     kr_free(free_list, using_mem, reinterpret_cast<T*>(header + 1));
     return header;
@@ -84,7 +78,7 @@ static T* kr_alloc(allocatorHeader* free_list, allocatorHeader* using_mem, size_
 
 template<typename T>
 T *MarkSweepAllocator<T>::allocate(size_t num) {
-    return kr_alloc(this->free, this->use_mem, num * sizeof(T));
+    return kr_alloc<T>(this->free, this->use_mem, (size_t)num * sizeof(T));
 }
 
 template<typename T>
@@ -92,8 +86,9 @@ void MarkSweepAllocator<T>::deallocate(T * to_free) {
     return kr_free(this->free, this->use_mem, to_free);
 }
 
-template<typename T>
-MarkSweepAllocator<T>::MarkSweepAllocator() {
-    this->free = &base;
-    this->free->next = &base;
-}
+//template<typename T>
+//MarkSweepAllocator<T>::MarkSweepAllocator() {
+//    this->free = &base;
+//    this->free->next = &base;
+//    this->free->size = 0;
+//}
