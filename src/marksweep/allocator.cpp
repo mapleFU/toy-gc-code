@@ -12,13 +12,16 @@
 
 // The minimal size to allocate from heap.
 constexpr int MinHeapAlloc = 1024;
+constexpr int SizeOfAllocatorHeader = sizeof(allocatorHeader);
+constexpr int _ALIGN = 8;
+
+// align by 8 bits.
+inline static size_t Align(size_t sz) {
+    return (((sz) + (size_t) _ALIGN-1) & ~((size_t) _ALIGN - 1));
+}
 
 template <typename T>
 static void kr_free(allocatorHeader* free_list, allocatorHeader* using_mem, T* free_mem);
-
-class allocatorHeader;
-
-//std::list<allocatorHeader> free_list;
 
 template <typename T>
 static allocatorHeader* more_heap(allocatorHeader* free_list, allocatorHeader* using_mem, size_t num_units) {
@@ -65,6 +68,12 @@ static T* kr_alloc(allocatorHeader* free_list, allocatorHeader* using_mem, size_
     bool allocated{false};
     // traverse free list
     // sz is the size to allocate
+    // TODO: make clear if the align can be use in this way.
+    // force padding to num of units
+    // Note: K&R Malloc using nunits to control align and malloc
+    //    size_t nunits = (sz + sizeof(allocatorHeader) - 1) / sizeof(allocatorHeader) + 1;
+    sz = Align(sz);
+
     assert(free_list != nullptr);
     auto* free_cursor = free_list->next; bool started { false };
     while (free_cursor != free_list || !started) {
@@ -73,21 +82,22 @@ static T* kr_alloc(allocatorHeader* free_list, allocatorHeader* using_mem, size_
         }
         // using first fit algorithm.
         if (free_cursor->size >= sz + sizeof(allocatorHeader)) {
-            // this part of space is available.
-            // Giving the tail of free_cursor to free_list
-            // * reduce the size of free_cursor. (TODO: it may be 0, so we should add merge)
-            // * allocate the part to using_mem(It maybe nullptr.) (Do it later.)
-            free_cursor->size -= (sz + sizeof(allocatorHeader));
-
-
             allocated = true;
             break;
         }
     }
 
     if (!allocated) {
-        free_cursor = more_heap<T>(free_list, using_mem, sz + sizeof(allocatorHeader));
+        free_cursor = more_heap<T>(free_list, using_mem, sz + sizeof(allocatorHeader)) - 1;
     }
+
+    // this part of space is available.
+    // Giving the tail of free_cursor to free_list
+    // * reduce the size of free_cursor. (TODO: it may be 0, so we should add merge)
+    // * allocate the part to using_mem(It maybe nullptr.) (Do it later.)
+
+    // size must be aligned
+    free_cursor->size -= (sz + sizeof(allocatorHeader));
 
     free_cursor = reinterpret_cast<allocatorHeader*>(reinterpret_cast<unsigned long>(free_cursor) + free_cursor->size);
     free_cursor->size = sz;
@@ -99,7 +109,7 @@ static T* kr_alloc(allocatorHeader* free_list, allocatorHeader* using_mem, size_
         using_mem->next = free_cursor;
     }
 
-    return reinterpret_cast<T*>((unsigned long)free_cursor + sizeof(allocatorHeader));
+    return reinterpret_cast<T*>(free_cursor + 1);
 }
 
 
