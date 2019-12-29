@@ -15,12 +15,21 @@ struct allocatorHeader {
 
 template <typename T>
 class MarkSweepAllocator {
-    MarkSweepAllocator();
 public:
+    // TODO: make clear why this should not be in another file.
+    MarkSweepAllocator() {
+        this->free = &base;
+        this->free->next = &base;
+        this->free->size = 0;
+    }
     T* allocate(size_t num);
-    void deallocate(T*, size_t num);
+    void deallocate(T*);
 private:
+    allocatorHeader* free;
+    allocatorHeader* use_mem = nullptr;
 
+    // Note: It's on the stack.
+    allocatorHeader base;
 };
 
 
