@@ -18,15 +18,6 @@ static void kr_free(allocatorHeader* free_list, allocatorHeader* using_mem, T* f
 
 class allocatorHeader;
 
-//class allocatorHeaderIter {
-//    friend class allcatorHeader;
-//
-//    allocatorHeader* beg;
-//    allocatorHeader* current;
-//
-//    allocatorHeaderIter(allocatorHeader* cur): beg(cur), current(cur) {}
-//};
-
 //std::list<allocatorHeader> free_list;
 
 template <typename T>
@@ -72,7 +63,43 @@ static void kr_free(allocatorHeader* free_list, allocatorHeader* using_mem, T* f
 template <typename T>
 static T* kr_alloc(allocatorHeader* free_list, allocatorHeader* using_mem, size_t sz) {
     bool allocated{false};
-    NotImplemented();
+    // traverse free list
+    // sz is the size to allocate
+    assert(free_list != nullptr);
+    auto* free_cursor = free_list->next; bool started { false };
+    while (free_cursor != free_list || !started) {
+        if (free_cursor == free_list) {
+            started = true;
+        }
+        // using first fit algorithm.
+        if (free_cursor->size >= sz + sizeof(allocatorHeader)) {
+            // this part of space is available.
+            // Giving the tail of free_cursor to free_list
+            // * reduce the size of free_cursor. (TODO: it may be 0, so we should add merge)
+            // * allocate the part to using_mem(It maybe nullptr.) (Do it later.)
+            free_cursor->size -= (sz + sizeof(allocatorHeader));
+
+
+            allocated = true;
+            break;
+        }
+    }
+
+    if (!allocated) {
+        free_cursor = more_heap<T>(free_list, using_mem, sz + sizeof(allocatorHeader));
+    }
+
+    free_cursor = reinterpret_cast<allocatorHeader*>(reinterpret_cast<unsigned long>(free_cursor) + free_cursor->size);
+    free_cursor->size = sz;
+    if (using_mem == nullptr) {
+        using_mem = free_cursor;
+        using_mem->next = free_cursor;
+    } else {
+        free_cursor->next = using_mem->next;
+        using_mem->next = free_cursor;
+    }
+
+    return reinterpret_cast<T*>((unsigned long)free_cursor + sizeof(allocatorHeader));
 }
 
 
@@ -85,10 +112,3 @@ template<typename T>
 void MarkSweepAllocator<T>::deallocate(T * to_free) {
     return kr_free(this->free, this->use_mem, to_free);
 }
-
-//template<typename T>
-//MarkSweepAllocator<T>::MarkSweepAllocator() {
-//    this->free = &base;
-//    this->free->next = &base;
-//    this->free->size = 0;
-//}
