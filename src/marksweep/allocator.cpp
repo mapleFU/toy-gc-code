@@ -40,7 +40,7 @@ static allocatorHeader base;
 static allocatorHeader *more_heap(size_t num_units) {
     if (num_units < MinHeapAlloc)
         num_units = MinHeapAlloc;
-    char *heap_mem = reinterpret_cast<char *>(sbrk(num_units));
+    char *heap_mem = reinterpret_cast<char *>(sbrk(num_units * sizeof(allocatorHeader)));
     if (heap_mem == nullptr) {
         throw std::bad_alloc();
     }
