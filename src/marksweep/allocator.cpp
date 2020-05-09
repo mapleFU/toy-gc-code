@@ -3,13 +3,13 @@
 //
 
 #include "marksweep/allocator.h"
-#include "exceptions.h"
 
 #if __APPLE__
 #include <mach-o/getsect.h>
 #endif
 
 #include <cstdio>
+#include <cassert>
 #include <exception>
 #include <memory>
 #include <mutex>
