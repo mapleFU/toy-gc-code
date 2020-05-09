@@ -11,19 +11,13 @@
 // an incomplete data type
 struct allocatorHeader;
 
-template <typename T>
-class MarkSweepAllocator {
-public:
-    MarkSweepAllocator();
-    T* allocate(size_t num);
-    void deallocate(T*);
-private:
-    allocatorHeader* free;
-    allocatorHeader* use_mem = nullptr;
+extern void gc_free(void *free_mem);
+extern void *gc_alloc(size_t sz);
 
-    // Note: It's on the stack.
-    allocatorHeader base;
+template <typename T> class MarkSweepAllocator {
+  public:
+    T *allocate(size_t num) { return gc_alloc(num * sizeof(T)); }
+    void deallocate(T *ptr) { gc_free(ptr); }
 };
 
-
-#endif //TOY_GC_LEARNING_ALLOCATOR_H
+#endif // TOY_GC_LEARNING_ALLOCATOR_H

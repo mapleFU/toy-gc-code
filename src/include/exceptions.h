@@ -10,15 +10,14 @@
 
 #include <fmt/format.h>
 
-class NotImplementedException : public std::logic_error
-{
-public:
-    NotImplementedException(unsigned line, const std::string& file):
-        std::logic_error(fmt::format("[Unimplemented Error] File: {}, Line: {}", file, line)) {};
+class NotImplementedException : public std::logic_error {
+  public:
+    NotImplementedException(unsigned line, const std::string &file)
+        : std::logic_error(fmt::format(
+              "[Unimplemented Error] File: {}, Line: {}", file, line)){};
 };
 
-#define NotImplemented() { \
-    throw NotImplementedException(__LINE__, __FILE__); \
-}
+#define NotImplemented()                                                       \
+    { throw NotImplementedException(__LINE__, __FILE__); }
 
-#endif //TOY_GC_LEARNING_EXCEPTIONS_H
+#endif // TOY_GC_LEARNING_EXCEPTIONS_H
