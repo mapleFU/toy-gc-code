@@ -6,7 +6,5 @@
 #include "exceptions.h"
 
 int main() {
-    MarkSweepAllocator<int> alloc;
-
-    NotImplemented()
+    MarkSweepAllocator<int> alloc{};
 }
