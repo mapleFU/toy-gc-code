@@ -8,28 +8,17 @@
 #include <memory>
 #include <unistd.h>
 
-struct allocatorHeader {
-    unsigned int size;
-    allocatorHeader* next;
-};
+extern void *gc_alloc(size_t nbytes);
+extern void gc_free(void *free_mem);
 
 template <typename T>
 class MarkSweepAllocator {
 public:
-    // TODO: make clear why this should not be in another file.
-    MarkSweepAllocator() {
-        this->free = &base;
-        this->free->next = &base;
-        this->free->size = 0;
+    T* allocate(size_t num) {
+        return gc_alloc(num * sizeof(T));
     }
-    T* allocate(size_t num);
-    void deallocate(T*);
-private:
-    allocatorHeader* free;
-    allocatorHeader* use_mem = nullptr;
-
-    // Note: It's on the stack.
-    allocatorHeader base;
+    // 我就不回收 (((o(*ﾟ▽ﾟ*)o)))
+    void deallocate(T*) {}
 };
 
 

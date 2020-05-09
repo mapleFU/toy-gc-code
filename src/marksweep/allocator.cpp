@@ -206,10 +206,10 @@ void GC_init() {
 
     initted = 1;
 
-    // Note: this code may not work on MacOS...
+    // Note: "/proc/self" code may not work on MacOS, so we need pid.
     // https://stackoverflow.com/questions/1023306/finding-current-executables-path-without-proc-self-exe
-    // Oh fuck, mac doesn't support it...
-    statfp = fopen("/proc/self/stat", "r");
+    auto s = fmt::format("/proc/%u/stat", getpid());
+    statfp = fopen(s.c_str(), "r");
     assert(statfp != nullptr);
     fscanf(statfp,
            "%*d %*s %*c %*d %*d %*d %*d %*d %*u "
