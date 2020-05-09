@@ -8,17 +8,29 @@
 #include <memory>
 #include <unistd.h>
 
-// an incomplete data type
-struct allocatorHeader;
-
-extern void gc_free(void *free_mem);
-extern void *gc_alloc(size_t sz);
-extern void GC_collect();
-
-template <typename T> class MarkSweepAllocator {
-  public:
-    T *allocate(size_t num) { return gc_alloc(num * sizeof(T)); }
-    void deallocate(T *ptr) { gc_free(ptr); }
+struct allocatorHeader {
+    unsigned int size;
+    allocatorHeader* next;
 };
 
-#endif // TOY_GC_LEARNING_ALLOCATOR_H
+template <typename T>
+class MarkSweepAllocator {
+public:
+    // TODO: make clear why this should not be in another file.
+    MarkSweepAllocator() {
+        this->free = &base;
+        this->free->next = &base;
+        this->free->size = 0;
+    }
+    T* allocate(size_t num);
+    void deallocate(T*);
+private:
+    allocatorHeader* free;
+    allocatorHeader* use_mem = nullptr;
+
+    // Note: It's on the stack.
+    allocatorHeader base;
+};
+
+
+#endif //TOY_GC_LEARNING_ALLOCATOR_H
