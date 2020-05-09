@@ -10,6 +10,8 @@
 
 extern void *gc_alloc(size_t nbytes);
 extern void gc_free(void *free_mem);
+extern void global_gc_init();
+extern void GC_collect();
 
 template <typename T>
 class MarkSweepAllocator {

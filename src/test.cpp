@@ -5,6 +5,14 @@
 #include "marksweep/allocator.h"
 #include "exceptions.h"
 
+void gc_call() {
+    gc_alloc(2000);
+    gc_alloc(2000);
+}
+
 int main() {
-    MarkSweepAllocator<int> alloc{};
+    global_gc_init();
+    gc_call();
+    gc_call();
+    GC_collect();
 }

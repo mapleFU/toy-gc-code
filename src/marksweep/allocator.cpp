@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <exception>
 #include <memory>
+#include <mutex>
 #include <unistd.h>
 
 // The minimal size to allocate from heap.
@@ -197,7 +198,7 @@ static std::size_t stack_bottom;
 /*
  * Find the absolute bottom of the stack and set stuff up.
  */
-void GC_init() {
+static void GC_init() {
     static int initted;
     FILE *statfp;
 
@@ -208,8 +209,9 @@ void GC_init() {
 
     // Note: "/proc/self" code may not work on MacOS, so we need pid.
     // https://stackoverflow.com/questions/1023306/finding-current-executables-path-without-proc-self-exe
-    auto s = fmt::format("/proc/%u/stat", getpid());
-    statfp = fopen(s.c_str(), "r");
+    // Mac should use vmmap, currently it's unimplemented.
+//    auto s = fmt::format("/proc/{}/stat", getpid());
+    statfp = fopen("/proc/self/stat", "r");
     assert(statfp != nullptr);
     fscanf(statfp,
            "%*d %*s %*c %*d %*d %*d %*d %*d %*u "
@@ -221,6 +223,12 @@ void GC_init() {
 
     base.next = free_list = &base;
     base.size = 0;
+}
+
+std::once_flag gc_init;
+
+void global_gc_init() {
+    std::call_once(gc_init, GC_init);
 }
 
 // the address of etext is the last address past the text segment.
