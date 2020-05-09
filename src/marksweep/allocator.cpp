@@ -106,7 +106,6 @@ void *gc_alloc(size_t nbytes) {
     // fetch a enough size from
     for (p = prevp->next;; prevp = p, p = p->next) {
         if (p->size >= nunits) { /* big enough */
-
             if (p->size == nunits) /* exactly */
                 // just remove and return p.
                 prevp->next = p->next;
@@ -135,6 +134,8 @@ void *gc_alloc(size_t nbytes) {
             if ((p = more_heap(nunits)) == nullptr) {
                 return nullptr; /* none left */
             }
+            // TODO: this maybe bad
+            prevp = p; p = p->next;
         }
     }
 }
