@@ -40,7 +40,8 @@ static allocatorHeader base;
 static allocatorHeader *more_heap(size_t num_units) {
     if (num_units < MinHeapAlloc)
         num_units = MinHeapAlloc;
-    char *heap_mem = reinterpret_cast<char *>(sbrk(num_units * sizeof(allocatorHeader)));
+    char *heap_mem =
+        reinterpret_cast<char *>(sbrk(num_units * sizeof(allocatorHeader)));
     if (heap_mem == nullptr) {
         throw std::bad_alloc();
     }
@@ -105,7 +106,7 @@ void *gc_alloc(size_t nbytes) {
     // using first fir algorithm.
     // fetch a enough size from
     for (p = prevp->next;; prevp = p, p = p->next) {
-        if (p->size >= nunits) { /* big enough */
+        if (p->size >= nunits) {   /* big enough */
             if (p->size == nunits) /* exactly */
                 // just remove and return p.
                 prevp->next = p->next;
@@ -135,7 +136,8 @@ void *gc_alloc(size_t nbytes) {
                 return nullptr; /* none left */
             }
             // TODO: this maybe bad
-            prevp = p; p = p->next;
+            prevp = p;
+            p = p->next;
         }
     }
 }
@@ -154,7 +156,7 @@ static void scan_region(std::size_t *sp, std::size_t *end) {
     allocatorHeader *bp;
 
     for (; sp < end; sp++) {
-        std::size_t v = *sp;
+        td::size_t v = *sp;
         bp = usedp;
         do {
             // Note: this part do a checking: does sp point to a field in bp |s
@@ -263,9 +265,10 @@ void GC_collect() {
     if (usedp == nullptr)
         return;
 
-    /* Scan the BSS and initialized data segments. */
-    scan_region(reinterpret_cast<size_t *>(&etext),
-                reinterpret_cast<size_t *>(&end));
+    // FIXME: here may cause some bugs, it will segment fault here.
+    //    /* Scan the BSS and initialized data segments. */
+    //    scan_region(reinterpret_cast<size_t *>(&etext),
+    //                reinterpret_cast<size_t *>(&end));
 
     /* Scan the stack. */
     // https://stackoverflow.com/questions/10461798/asm-code-containing-0-what-does-that-mean
