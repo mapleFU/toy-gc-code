@@ -13,6 +13,7 @@ struct allocatorHeader;
 
 extern void gc_free(void *free_mem);
 extern void *gc_alloc(size_t sz);
+extern void GC_collect();
 
 template <typename T> class MarkSweepAllocator {
   public:

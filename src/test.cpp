@@ -7,6 +7,4 @@
 
 int main() {
     MarkSweepAllocator<int> alloc{};
-
-    NotImplemented()
 }
