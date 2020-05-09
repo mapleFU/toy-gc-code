@@ -3,12 +3,12 @@
 //
 
 #include "marksweep/allocator.h"
-#include "exceptions.h"
 
 #if __APPLE__
 #include <mach-o/getsect.h>
 #endif
 
+#include <cassert>
 #include <cstdio>
 #include <exception>
 #include <memory>
@@ -40,7 +40,7 @@ static allocatorHeader base;
 static allocatorHeader *more_heap(size_t num_units) {
     if (num_units < MinHeapAlloc)
         num_units = MinHeapAlloc;
-    char *heap_mem = reinterpret_cast<char *>(sbrk(num_units));
+    char *heap_mem = reinterpret_cast<char *>(sbrk(num_units * sizeof(allocatorHeader)));
     if (heap_mem == nullptr) {
         throw std::bad_alloc();
     }
@@ -63,7 +63,8 @@ void gc_free(void *free_mem) {
     while (!(free_ptr < header && free_ptr->next > header)) {
         // corner case: | | header
         // header is on the top
-        if (free_ptr->next < free_ptr && header > free_ptr) {
+        if ((free_ptr->next < free_ptr || free_ptr->next == free_ptr) &&
+            header > free_ptr) {
             break;
         }
         free_ptr = free_ptr->next;
@@ -105,7 +106,6 @@ void *gc_alloc(size_t nbytes) {
     // fetch a enough size from
     for (p = prevp->next;; prevp = p, p = p->next) {
         if (p->size >= nunits) { /* big enough */
-
             if (p->size == nunits) /* exactly */
                 // just remove and return p.
                 prevp->next = p->next;
@@ -134,6 +134,8 @@ void *gc_alloc(size_t nbytes) {
             if ((p = more_heap(nunits)) == nullptr) {
                 return nullptr; /* none left */
             }
+            // TODO: this maybe bad
+            prevp = p; p = p->next;
         }
     }
 }
@@ -155,7 +157,8 @@ static void scan_region(std::size_t *sp, std::size_t *end) {
         std::size_t v = *sp;
         bp = usedp;
         do {
-            // Note: this part do a checking: does sp point to a field in bp |s e| --> [s, e)
+            // Note: this part do a checking: does sp point to a field in bp |s
+            // e| --> [s, e)
             if (reinterpret_cast<size_t>(bp + 1) <= v &&
                 reinterpret_cast<size_t>(bp + 1 + bp->size) > v) {
                 // tag
@@ -178,13 +181,15 @@ static void scan_heap() {
         if (!((std::size_t)bp->next & 1))
             continue;
         // just like the code above, checks field in bp's allocated memory.
-        for (vp = (std::size_t *)(bp + 1); vp < reinterpret_cast<std::size_t*>((bp + bp->size + 1)); vp++) {
+        for (vp = (std::size_t *)(bp + 1);
+             vp < reinterpret_cast<std::size_t *>((bp + bp->size + 1)); vp++) {
             std::size_t v = *vp;
             up = untag(reinterpret_cast<const allocatorHeader *>(bp->next));
             do {
                 if (up != bp && reinterpret_cast<std::size_t>(up + 1) <= v &&
                     reinterpret_cast<std::size_t>(up + 1 + up->size) > v) {
-                    up->next = reinterpret_cast<allocatorHeader *>(((std::size_t) up->next) | 1);
+                    up->next = reinterpret_cast<allocatorHeader *>(
+                        ((std::size_t)up->next) | 1);
                     break;
                 }
             } while ((up = untag(reinterpret_cast<const allocatorHeader *>(
@@ -199,18 +204,18 @@ static std::size_t stack_bottom;
  * Find the absolute bottom of the stack and set stuff up.
  */
 static void GC_init() {
-    static int initted;
+    static bool initted(false);
     FILE *statfp;
 
     if (initted)
         return;
 
-    initted = 1;
+    initted = true;
 
     // Note: "/proc/self" code may not work on MacOS, so we need pid.
     // https://stackoverflow.com/questions/1023306/finding-current-executables-path-without-proc-self-exe
     // Mac should use vmmap, currently it's unimplemented.
-//    auto s = fmt::format("/proc/{}/stat", getpid());
+    //    auto s = fmt::format("/proc/{}/stat", getpid());
     statfp = fopen("/proc/self/stat", "r");
     assert(statfp != nullptr);
     fscanf(statfp,
@@ -228,7 +233,9 @@ static void GC_init() {
 std::once_flag gc_init;
 
 void global_gc_init() {
-    std::call_once(gc_init, GC_init);
+    // TODO: call_once may cause bug, please fix it latter.
+    //    std::call_once(gc_init, GC_init);
+    GC_init();
 }
 
 // the address of etext is the last address past the text segment.
@@ -237,9 +244,10 @@ void global_gc_init() {
 // end: the address of end is the start of the heap, or the last address
 // past the end of the BSS.
 #if __APPLE__
-    // Note: apple needs https://stackoverflow.com/questions/1765969/where-are-the-symbols-etext-edata-and-end-defined
-    static char end = get_end();
-    static char etext = get_etext();
+// Note: apple needs
+// https://stackoverflow.com/questions/1765969/where-are-the-symbols-etext-edata-and-end-defined
+static char end = get_end();
+static char etext = get_etext();
 #else
 extern char end, etext; /* Provided by the linker. */
 #endif
@@ -261,7 +269,7 @@ void GC_collect() {
 
     /* Scan the stack. */
     // https://stackoverflow.com/questions/10461798/asm-code-containing-0-what-does-that-mean
-    asm volatile ("movl %%ebp, %0" : "=rm"(stack_top));
+    asm volatile("movl %%ebp, %0" : "=rm"(stack_top));
     scan_region(reinterpret_cast<size_t *>(&stack_top), &stack_bottom);
 
     /* Mark from the heap. */
